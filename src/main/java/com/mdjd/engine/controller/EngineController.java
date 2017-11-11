@@ -22,8 +22,8 @@ public class EngineController {
 
 
     @RequestMapping(value = "/processing", method = RequestMethod.POST)
-    public Engine move(@RequestParam("gameId") int gameId, @RequestParam("player") int player, @RequestParam("coordinate") int[][] coordinate) {
-        return repository.move(gameId, player, coordinate);
+    public String move(@RequestParam("gameId") int gameId, @RequestParam("player") int player, @RequestParam("row") int row, @RequestParam("column") int col) {
+        return repository.move(gameId, player, row, col);
     }
 
 

@@ -9,58 +9,58 @@ public class Engine {
 
     @Id private int gameID;
 
-    private String firstPlayerUUID;
+    private String firstPlayerUsername;
 
-    private String secondPlayerUUID;
+    private String secondPlayerUsername;
 
     private int[][] coordinatePlane;
 
-    private int currentPlayer;
+    private int lastPlaye;
 
     public Engine(){}
 
     public Engine(String firstPlayerUUID, String secondPlayerUUID, int gameID) {
-        coordinatePlane = new int[14][14];
-        this.firstPlayerUUID = firstPlayerUUID;
-        this.secondPlayerUUID = secondPlayerUUID;
+        coordinatePlane = new int[13][13];
+        this.firstPlayerUsername = firstPlayerUUID;
+        this.secondPlayerUsername = secondPlayerUUID;
         this.gameID = gameID;
 
     }
 
-    public String getFirstPlayerUUID() {
-        return firstPlayerUUID;
+    public String getFirstPlayerUsername() {
+        return firstPlayerUsername;
     }
 
-    public String getSecondPlayerUUID() {
-        return secondPlayerUUID;
+    public String getSecondPlayerUsername() {
+        return secondPlayerUsername;
     }
 
     public int[][] getCoordinatePlane() {
         return coordinatePlane;
     }
 
-    public int getCurrentPlayer() {
-        return currentPlayer;
+    public int getLastPlaye() {
+        return lastPlaye;
     }
 
     public int getGameID() {
         return gameID;
     }
 
-    public void setFirstPlayerUUID(String firstPlayerUUID) {
-        this.firstPlayerUUID = firstPlayerUUID;
+    public void setFirstPlayerUsername(String firstPlayerUsername) {
+        this.firstPlayerUsername = firstPlayerUsername;
     }
 
-    public void setSecondPlayerUUID(String secondPlayerUUID) {
-        this.secondPlayerUUID = secondPlayerUUID;
+    public void setSecondPlayerUsername(String secondPlayerUsername) {
+        this.secondPlayerUsername = secondPlayerUsername;
     }
 
     public void setCoordinatePlane(int[][] coordinatePlane) {
         this.coordinatePlane = coordinatePlane;
     }
 
-    public void setCurrentPlayer(int currentPlayer) {
-        this.currentPlayer = currentPlayer;
+    public void setLastPlaye(int lastPlaye) {
+        this.lastPlaye = lastPlaye;
     }
 
     public void setGameID(int gameID) {
