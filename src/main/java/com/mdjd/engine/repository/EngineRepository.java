@@ -19,6 +19,7 @@ public class EngineRepository {
 
     private int currentPlayer;
     private int[][] board;
+    private int currentGameId;
 
     private enum Msg {
         DATABASE(0, "A database error has occured."),
@@ -56,6 +57,7 @@ public class EngineRepository {
     public int create(String firstPlayer, String secondPlayer) {
         int gameId = getNewGameId();
         Engine engine = new Engine(firstPlayer, secondPlayer, gameId);
+        mongoTemplate.save(engine, "engine");
         return gameId;
     }
 
@@ -85,19 +87,36 @@ public class EngineRepository {
 //        }
     }
 
+    private Engine retreiveEngine(int gameId) {
+        Criteria c = Criteria.where("_id").is(gameId);
+        Query query = new Query().addCriteria(c);
+        Engine engine = mongoTemplate.findOne(query, Engine.class);
+        return engine;
+    }
+
+    private int updateEngine(Update update) {
+        mongoTemplate.updateFirst(new Query(Criteria.where("gameId").is(currentGameId)), update, "engine");
+        Engine engine =mongoTemplate.findOne(new Query(Criteria.where("gameId").is(currentGameId)), Engine.class);
+
+        return Msg.DATABASE.getCode();
+    }
+
     public String move(int gameId, int player,int row, int col) {
+        Engine engine = retreiveEngine(gameId);
         Update update = new Update();
         //do it here
 
-        mongoTemplate.updateFirst(new Query(Criteria.where("_id").is(gameId)), update, "engine");
-        Engine engine = mongoTemplate.findOne(new Query(Criteria.where("_id").is(gameId)), Engine.class);
-
-        currentPlayer = player;
         board = engine.getCoordinatePlane();
+        currentPlayer = player;
+        currentGameId = engine.getGameID();
 
         if ( board[row][col] != 0 ) {
             return Msg.EMPTY_SQUARE.description;
         }
+
+        board[row][col] = player; //make the move
+        update.set("coordinatePlane",board);
+        update.set("lastPlayer",currentPlayer);
 
         if (winner(row,col)) {  // First, check for a winner.
             if (currentPlayer == 1)
@@ -116,7 +135,7 @@ public class EngineRepository {
             gameFinished(gameId, 0);
             return Msg.DRAW.description;
         }
-
+        updateEngine(update);
         return "moved";
     }
 

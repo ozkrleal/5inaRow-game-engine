@@ -15,7 +15,7 @@ public class Engine {
 
     private int[][] coordinatePlane;
 
-    private int lastPlaye;
+    private int lastPlayer;
 
     public Engine(){}
 
@@ -39,8 +39,8 @@ public class Engine {
         return coordinatePlane;
     }
 
-    public int getLastPlaye() {
-        return lastPlaye;
+    public int getLastPlayer() {
+        return lastPlayer;
     }
 
     public int getGameID() {
@@ -59,8 +59,8 @@ public class Engine {
         this.coordinatePlane = coordinatePlane;
     }
 
-    public void setLastPlaye(int lastPlaye) {
-        this.lastPlaye = lastPlaye;
+    public void setLastPlaye(int lastPlayer) {
+        this.lastPlayer = lastPlayer;
     }
 
     public void setGameID(int gameID) {
