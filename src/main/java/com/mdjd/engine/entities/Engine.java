@@ -20,11 +20,22 @@ public class Engine {
     public Engine(){}
 
     public Engine(String firstPlayerUUID, String secondPlayerUUID, int gameID) {
-        coordinatePlane = new int[13][13];
+        this.lastPlayer = 1;
         this.firstPlayerUsername = firstPlayerUUID;
         this.secondPlayerUsername = secondPlayerUUID;
+        this.coordinatePlane = fillPlaneWithEmpty();
         this.gameID = gameID;
 
+    }
+
+    private int[][] fillPlaneWithEmpty() {
+        int[][] value = new int[13][13];
+        for (int row = 0; row < 13; row++) {        // Fill the board with EMPTYs
+            for (int col = 0; col < 13; col++) {
+                value[row][col] = 0;
+            }
+        }
+        return value;
     }
 
     public String getFirstPlayerUsername() {
