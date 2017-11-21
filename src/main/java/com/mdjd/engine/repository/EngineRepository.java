@@ -27,7 +27,7 @@ public class EngineRepository {
         EMPTY_SQUARE(2, "This is not an empty square"),
         START_NEW_GAME(3, "Finish the current game first!"),
         NOW_GAME_FOUND(4, "This Game Id is invalid"),
-        PLAYER_RESIGNS(5, "Player resignes, you have won"),
+        PLAYER_RESIGNS(5, "Player resigns, you have won"),
         DRAW(6, "The game ends in a draw."),
         GAME_FINISHED(7, "The game is finished");
 
