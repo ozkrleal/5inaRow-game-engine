@@ -7,6 +7,8 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -19,17 +21,18 @@ public class EngineRepository {
 
     private int currentPlayer;
     private int[][] board;
-    private int currentGameId;
+    private String currentGameId;
 
     private enum Msg {
         DATABASE(0, "A database error has occured."),
         UNTURN_MOVE(1, "This user already moved."),
         EMPTY_SQUARE(2, "This is not an empty square"),
         START_NEW_GAME(3, "Finish the current game first!"),
-        NOW_GAME_FOUND(4, "This Game Id is invalid"),
+        NO_GAME_FOUND(4, "This Game Id is invalid"),
         PLAYER_RESIGNS(5, "Player resigns, you have won"),
         DRAW(6, "The game ends in a draw."),
-        GAME_FINISHED(7, "The game is finished");
+        GAME_FINISHED(7, "The game is finished"),
+        PLAYER_MOVED(7, "The player has moved");
 
 
         private final int code;
@@ -54,31 +57,32 @@ public class EngineRepository {
         }
     }
 
-    public int create(String firstPlayer, String secondPlayer) {
-        int gameId = getNewGameId();
-        Engine engine = new Engine(firstPlayer, secondPlayer, gameId);
+    public ResponseEntity create(String firstPlayer, String secondPlayer) {
+//        int gameId = getNewGameId();
+        Engine engine = new Engine(firstPlayer, secondPlayer);
         mongoTemplate.save(engine, "engine");
-        return gameId;
+        System.out.print(engine);
+        return ResponseEntity.status(HttpStatus.CREATED).body(engine.getGameID());
     }
 
-    private int getNewGameId() {
-        int counter = 1;
-        int i = 0;
-        List<Integer> list = findGameIds();
+//    private int getNewGameId() {
+//        int counter = 1;
+//        int i = 0;
+//        List<Integer> list = findGameIds();
+//
+//        while (i<list.size()) {
+//            if (counter == list.get(i)) {
+//                counter++;
+//                i = 0;
+//            } else {
+//                ++i;
+//            }
+//        }
+//
+//        return counter;
+//    }
 
-        while (i<list.size()) {
-            if (counter == list.get(i)) {
-                counter++;
-                i = 0;
-            } else {
-                ++i;
-            }
-        }
-
-        return counter;
-    }
-
-    private void calculateScore(int player, int gameId) {
+    private void calculateScore(int player, String gameId) {
 //        if(player == 0) {
 //            calculateScore(1, gameId);
 //            calculateScore(2, gameId);
@@ -87,7 +91,7 @@ public class EngineRepository {
 //        }
     }
 
-    private Engine retreiveEngine(int gameId) {
+    private Engine retreiveEngine(String gameId) {
         Criteria c = Criteria.where("_id").is(gameId);
         Query query = new Query().addCriteria(c);
         Engine engine = mongoTemplate.findOne(query, Engine.class);
@@ -95,13 +99,13 @@ public class EngineRepository {
     }
 
     private int updateEngine(Update update) {
-        mongoTemplate.updateFirst(new Query(Criteria.where("gameId").is(currentGameId)), update, "engine");
-        Engine engine =mongoTemplate.findOne(new Query(Criteria.where("gameId").is(currentGameId)), Engine.class);
+        mongoTemplate.updateFirst(new Query(Criteria.where("_id").is(currentGameId)), update, "engine");
+        Engine engine =mongoTemplate.findOne(new Query(Criteria.where("_id").is(currentGameId)), Engine.class);
 
         return Msg.DATABASE.getCode();
     }
 
-    public String move(int gameId, int player,int row, int col) {
+    public ResponseEntity move(String gameId, int player,int row, int col) {
         Engine engine = retreiveEngine(gameId);
         Update update = new Update();
         //do it here
@@ -110,8 +114,12 @@ public class EngineRepository {
         currentPlayer = player;
         currentGameId = engine.getGameID();
 
+        if (currentPlayer == engine.getLastPlayer()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Msg.UNTURN_MOVE.description);
+        }
+
         if ( board[row][col] != 0 ) {
-            return Msg.EMPTY_SQUARE.description;
+            return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).body(Msg.EMPTY_SQUARE.description);
         }
 
         board[row][col] = player; //make the move
@@ -119,11 +127,12 @@ public class EngineRepository {
         update.set("lastPlayer",currentPlayer);
 
         if (winner(row,col)) {  // First, check for a winner.
+            String str;
             if (currentPlayer == 1)
-                gameFinished(gameId, 1);
+                str = gameFinished(gameId, 1);
             else
-                gameFinished(gameId, 2);
-            return Msg.GAME_FINISHED.description;
+                str = gameFinished(gameId, 2);
+            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(str);
         }
 
         boolean emptySpace = false;     // Check if the board is full.
@@ -132,11 +141,11 @@ public class EngineRepository {
                 if (board[i][j] == 0)
                     emptySpace = true;
         if (emptySpace == false) {
-            gameFinished(gameId, 0);
-            return Msg.DRAW.description;
+            String str = gameFinished(gameId, 0);
+            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(str);
         }
         updateEngine(update);
-        return "moved";
+        return ResponseEntity.ok(Msg.PLAYER_MOVED.description);
     }
 
     private boolean winner(int row, int col) {
@@ -191,17 +200,17 @@ public class EngineRepository {
     }
 
 
-    public Engine gameFinished(int gameId, int player) {
+    public String gameFinished(String gameId, int player) {
         Engine engine = new Engine();
         calculateScore(player, gameId);
         //do it here
 
-        return engine;
+        return "";
     }
 
     @SuppressWarnings("unchecked")
     public List<Integer> findGameIds() {
-        return mongoTemplate.getCollection("engine").distinct("gameId");
+        return mongoTemplate.getCollection("engine").distinct("_id");
     }
 
 

@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document(collection="engine")
 public class Engine {
 
-    @Id private int gameID;
+    @Id private String gameID;
 
     private String firstPlayerUsername;
 
@@ -19,12 +19,12 @@ public class Engine {
 
     public Engine(){}
 
-    public Engine(String firstPlayerUUID, String secondPlayerUUID, int gameID) {
+    public Engine(String firstPlayerUUID, String secondPlayerUUID) {
         this.lastPlayer = 1;
         this.firstPlayerUsername = firstPlayerUUID;
         this.secondPlayerUsername = secondPlayerUUID;
         this.coordinatePlane = fillPlaneWithEmpty();
-        this.gameID = gameID;
+//        this.gameID = gameID;
 
     }
 
@@ -54,7 +54,7 @@ public class Engine {
         return lastPlayer;
     }
 
-    public int getGameID() {
+    public String getGameID() {
         return gameID;
     }
 
@@ -74,7 +74,15 @@ public class Engine {
         this.lastPlayer = lastPlayer;
     }
 
-    public void setGameID(int gameID) {
+    public void setGameID(String gameID) {
         this.gameID = gameID;
     }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "Engine[gameID=%s, firstPlayerUsername='%s', secondPlayerUsername='%s']",
+                gameID, firstPlayerUsername, secondPlayerUsername);
+    }
+
 }
