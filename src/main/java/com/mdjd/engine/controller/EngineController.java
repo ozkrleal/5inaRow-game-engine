@@ -29,7 +29,7 @@ public class EngineController {
 
 
     @RequestMapping(value = "/quit", method = RequestMethod.POST)
-    public String gameFinished(@RequestParam("gameId") String gameId, @RequestParam(value = "player", defaultValue = "0") int player) {
+    public ResponseEntity gameFinished(@RequestParam("gameId") String gameId, @RequestParam(value = "player", defaultValue = "0") int player) {
         return repository.gameFinished(gameId, player);
     }
 

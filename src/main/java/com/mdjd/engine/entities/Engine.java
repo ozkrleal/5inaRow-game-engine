@@ -20,7 +20,7 @@ public class Engine {
     public Engine(){}
 
     public Engine(String firstPlayerUUID, String secondPlayerUUID) {
-        this.lastPlayer = 1;
+        this.lastPlayer = 2;
         this.firstPlayerUsername = firstPlayerUUID;
         this.secondPlayerUsername = secondPlayerUUID;
         this.coordinatePlane = fillPlaneWithEmpty();
@@ -76,6 +76,11 @@ public class Engine {
 
     public void setGameID(String gameID) {
         this.gameID = gameID;
+    }
+
+
+    public void setLastPlayer(int lastPlayer) {
+        this.lastPlayer = lastPlayer;
     }
 
     @Override

@@ -2,6 +2,8 @@ package com.mdjd.engine.repository;
 
 
 import com.mdjd.engine.entities.Engine;
+import com.mongodb.util.JSON;
+import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -11,6 +13,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Repository;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.List;
 
 @Repository
@@ -65,30 +70,11 @@ public class EngineRepository {
         return ResponseEntity.status(HttpStatus.CREATED).body(engine.getGameID());
     }
 
-//    private int getNewGameId() {
-//        int counter = 1;
-//        int i = 0;
-//        List<Integer> list = findGameIds();
-//
-//        while (i<list.size()) {
-//            if (counter == list.get(i)) {
-//                counter++;
-//                i = 0;
-//            } else {
-//                ++i;
-//            }
-//        }
-//
-//        return counter;
-//    }
-
-    private void calculateScore(int player, String gameId) {
-//        if(player == 0) {
-//            calculateScore(1, gameId);
-//            calculateScore(2, gameId);
-//        } else {
-//            calculateScore(player, gameId);
-//        }
+    private ResponseEntity calculateScore(String player, int moves) throws IOException {
+        URL url = new URL("http://localhost:8080/");
+        HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
+        httpCon.setRequestMethod("GET");
+        return ResponseEntity.status(httpCon.getResponseCode()).body(httpCon.getResponseMessage());
     }
 
     private Engine retreiveEngine(String gameId) {
@@ -101,7 +87,7 @@ public class EngineRepository {
     private int updateEngine(Update update) {
         mongoTemplate.updateFirst(new Query(Criteria.where("_id").is(currentGameId)), update, "engine");
         Engine engine =mongoTemplate.findOne(new Query(Criteria.where("_id").is(currentGameId)), Engine.class);
-
+        System.out.print(engine);
         return Msg.DATABASE.getCode();
     }
 
@@ -127,12 +113,12 @@ public class EngineRepository {
         update.set("lastPlayer",currentPlayer);
 
         if (winner(row,col)) {  // First, check for a winner.
-            String str;
+            ResponseEntity str;
             if (currentPlayer == 1)
                 str = gameFinished(gameId, 1);
             else
                 str = gameFinished(gameId, 2);
-            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(str);
+            return str;
         }
 
         boolean emptySpace = false;     // Check if the board is full.
@@ -141,9 +127,9 @@ public class EngineRepository {
                 if (board[i][j] == 0)
                     emptySpace = true;
         if (emptySpace == false) {
-            String str = gameFinished(gameId, 0);
-            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(str);
+            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.DRAW.getDescription());
         }
+
         updateEngine(update);
         return ResponseEntity.ok(Msg.PLAYER_MOVED.description);
     }
@@ -199,13 +185,37 @@ public class EngineRepository {
         return ct;
     }
 
+    private int calculateTheMoves(int player) {
+        int moves = 0;
+        for (int i = 0; i < 13; i++)
+            for (int j = 0; j < 13; j++)
+                if (board[i][j] == player)
+                    moves++;
+        return moves;
+    }
 
-    public String gameFinished(String gameId, int player) {
-        Engine engine = new Engine();
-        calculateScore(player, gameId);
-        //do it here
 
-        return "";
+    public ResponseEntity gameFinished(String gameId, int player) {
+        Engine engine = retreiveEngine(gameId);
+        String username;
+        if (player == 1) {
+            username = engine.getFirstPlayerUsername();
+        } else {
+            username = engine.getSecondPlayerUsername();
+        }
+        try {
+            ResponseEntity response = calculateScore(username, calculateTheMoves(player));
+            removeTheGameDB(gameId);
+            return response;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e);
+        }
+    }
+
+    private void removeTheGameDB(String gameId) {
+        Engine engine = mongoTemplate.findById(gameId, Engine.class, "engine");
+        mongoTemplate.remove(engine);
     }
 
     @SuppressWarnings("unchecked")
