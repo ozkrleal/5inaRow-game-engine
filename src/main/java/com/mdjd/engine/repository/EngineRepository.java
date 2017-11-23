@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.util.JSONPObject;
 import com.mdjd.engine.entities.Engine;
 import com.mongodb.util.JSON;
+import com.sun.javafx.binding.StringFormatter;
 import net.minidev.json.JSONObject;
 import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,10 +66,10 @@ public class EngineRepository {
             return code + ": " + description;
         }
 
-        public String toJsonString() {
+        public ObjectNode toJson() {
             ObjectMapper mapper = new ObjectMapper();
             ObjectNode value = mapper.createObjectNode().put("Message",description);
-            return value.toString();
+            return value;
         }
     }
 
@@ -77,12 +78,13 @@ public class EngineRepository {
         Engine engine = new Engine(firstPlayer, secondPlayer);
         mongoTemplate.save(engine, "engine");
         System.out.print(engine);
-        String responseValue = new ObjectMapper().createObjectNode().put("Game ID",engine.getGameID()).toString();
+        String responseValue = new ObjectMapper().createObjectNode().put("game_iD",engine.getGameID()).toString();
         return ResponseEntity.status(HttpStatus.CREATED).body(responseValue);
     }
 
     private ResponseEntity calculateScore(String player, int moves) throws IOException {
-        URL url = new URL("http://localhost:8080/");
+        String urlString = String.format("http://localhost:8080//5inarow/score?player=%s&moves=%2d", player, moves);
+        URL url = new URL(urlString);
         HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
         httpCon.setRequestMethod("GET");
         return ResponseEntity.status(httpCon.getResponseCode()).body(httpCon.getResponseMessage());
@@ -112,12 +114,12 @@ public class EngineRepository {
         currentGameId = engine.getGameID();
 
         if (currentPlayer == engine.getLastPlayer()) {
-            System.out.print(Msg.UNTURN_MOVE.toJsonString());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Msg.UNTURN_MOVE.toJsonString());
+            System.out.print(Msg.UNTURN_MOVE.toJson().toString());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Msg.UNTURN_MOVE.toJson().toString());
         }
 
         if ( board[row][col] != 0 ) {
-            return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).body(Msg.EMPTY_SQUARE.toJsonString());
+            return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).body(Msg.EMPTY_SQUARE.toJson().toString());
         }
 
         board[row][col] = player; //make the move
@@ -139,11 +141,17 @@ public class EngineRepository {
                 if (board[i][j] == 0)
                     emptySpace = true;
         if (emptySpace == false) {
-            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.DRAW.toJsonString());
+            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.DRAW.toJson());
         }
 
         updateEngine(update);
-        return ResponseEntity.ok(Msg.PLAYER_MOVED.toJsonString());
+        String whoesTurnItIs;
+        if (currentPlayer == 1) {
+            whoesTurnItIs = engine.getFirstPlayerUsername();
+        } else {
+            whoesTurnItIs = engine.getFirstPlayerUsername();
+        }
+        return ResponseEntity.ok((Msg.PLAYER_MOVED.toJson().put("whoes_turn_it_is",whoesTurnItIs)).toString());
     }
 
     private boolean winner(int row, int col) {

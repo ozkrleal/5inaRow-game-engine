@@ -16,19 +16,19 @@ public class EngineController {
     @Autowired
     private EngineRepository repository;
 
-    @RequestMapping(value = "/create", method = RequestMethod.GET)
+    @RequestMapping(value = "/create", method = RequestMethod.POST)
     public ResponseEntity create(@RequestParam("firstPlayer") String firstPlayer, @RequestParam("secondPlayer") String secondPlayer) {
         return repository.create(firstPlayer, secondPlayer);
     }
 
 
-    @RequestMapping(value = "/processing", method = RequestMethod.GET)
+    @RequestMapping(value = "/processing", method = RequestMethod.PUT)
     public ResponseEntity move(@RequestParam("gameId") String gameId, @RequestParam("player") int player, @RequestParam("row") int row, @RequestParam("column") int col) {
         return repository.move(gameId, player, row, col);
     }
 
 
-    @RequestMapping(value = "/quit", method = RequestMethod.POST)
+    @RequestMapping(value = "/quit", method = RequestMethod.DELETE)
     public ResponseEntity gameFinished(@RequestParam("gameId") String gameId, @RequestParam(value = "player", defaultValue = "0") int player) {
         return repository.gameFinished(gameId, player);
     }
