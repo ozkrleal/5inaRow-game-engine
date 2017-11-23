@@ -1,8 +1,12 @@
 package com.mdjd.engine.repository;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.util.JSONPObject;
 import com.mdjd.engine.entities.Engine;
 import com.mongodb.util.JSON;
+import net.minidev.json.JSONObject;
 import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -29,13 +33,13 @@ public class EngineRepository {
     private String currentGameId;
 
     private enum Msg {
-        DATABASE(0, "A database error has occured."),
-        UNTURN_MOVE(1, "This user already moved."),
+        DATABASE(0, "A database error has occured"),
+        UNTURN_MOVE(1, "This user already moved"),
         EMPTY_SQUARE(2, "This is not an empty square"),
-        START_NEW_GAME(3, "Finish the current game first!"),
+        START_NEW_GAME(3, "Finish the current game first"),
         NO_GAME_FOUND(4, "This Game Id is invalid"),
         PLAYER_RESIGNS(5, "Player resigns, you have won"),
-        DRAW(6, "The game ends in a draw."),
+        DRAW(6, "The game ends in a draw"),
         GAME_FINISHED(7, "The game is finished"),
         PLAYER_MOVED(7, "The player has moved");
 
@@ -60,6 +64,12 @@ public class EngineRepository {
         public String toString() {
             return code + ": " + description;
         }
+
+        public String toJsonString() {
+            ObjectMapper mapper = new ObjectMapper();
+            ObjectNode value = mapper.createObjectNode().put("Message",description);
+            return value.toString();
+        }
     }
 
     public ResponseEntity create(String firstPlayer, String secondPlayer) {
@@ -67,7 +77,8 @@ public class EngineRepository {
         Engine engine = new Engine(firstPlayer, secondPlayer);
         mongoTemplate.save(engine, "engine");
         System.out.print(engine);
-        return ResponseEntity.status(HttpStatus.CREATED).body(engine.getGameID());
+        String responseValue = new ObjectMapper().createObjectNode().put("Game ID",engine.getGameID()).toString();
+        return ResponseEntity.status(HttpStatus.CREATED).body(responseValue);
     }
 
     private ResponseEntity calculateScore(String player, int moves) throws IOException {
@@ -101,11 +112,12 @@ public class EngineRepository {
         currentGameId = engine.getGameID();
 
         if (currentPlayer == engine.getLastPlayer()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Msg.UNTURN_MOVE.description);
+            System.out.print(Msg.UNTURN_MOVE.toJsonString());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Msg.UNTURN_MOVE.toJsonString());
         }
 
         if ( board[row][col] != 0 ) {
-            return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).body(Msg.EMPTY_SQUARE.description);
+            return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).body(Msg.EMPTY_SQUARE.toJsonString());
         }
 
         board[row][col] = player; //make the move
@@ -127,11 +139,11 @@ public class EngineRepository {
                 if (board[i][j] == 0)
                     emptySpace = true;
         if (emptySpace == false) {
-            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.DRAW.getDescription());
+            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.DRAW.toJsonString());
         }
 
         updateEngine(update);
-        return ResponseEntity.ok(Msg.PLAYER_MOVED.description);
+        return ResponseEntity.ok(Msg.PLAYER_MOVED.toJsonString());
     }
 
     private boolean winner(int row, int col) {
