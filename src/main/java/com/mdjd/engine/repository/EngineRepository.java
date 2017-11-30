@@ -3,12 +3,7 @@ package com.mdjd.engine.repository;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.util.JSONPObject;
 import com.mdjd.engine.entities.Engine;
-import com.mongodb.util.JSON;
-import com.sun.javafx.binding.StringFormatter;
-import net.minidev.json.JSONObject;
-import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -42,7 +37,9 @@ public class EngineRepository {
         PLAYER_RESIGNS(5, "Player resigns, you have won"),
         DRAW(6, "The game ends in a draw"),
         GAME_FINISHED(7, "The game is finished"),
-        PLAYER_MOVED(7, "The player has moved");
+        PLAYER_MOVED(8, "The player has moved"),
+        NOT_YOUR_TURN(9, "It is not your turn"),
+        YOUR_TURN(10, "It is your turn");
 
 
         private final int code;
@@ -66,9 +63,14 @@ public class EngineRepository {
             return code + ": " + description;
         }
 
-        public ObjectNode toJson() {
+        public ObjectNode toJson(boolean showCode) {
             ObjectMapper mapper = new ObjectMapper();
-            ObjectNode value = mapper.createObjectNode().put("Message",description);
+            ObjectNode value;
+            if (showCode == true) {
+                value = mapper.createObjectNode().put("code", code);
+            } else {
+                value = mapper.createObjectNode().put("Message", description);
+            }
             return value;
         }
     }
@@ -83,10 +85,10 @@ public class EngineRepository {
     }
 
     private ResponseEntity calculateScore(String player, int moves) throws IOException {
-        String urlString = String.format("http://localhost:8080//5inarow/score?player=%s&moves=%2d", player, moves);
+        String urlString = String.format("http://localhost:8080/5inarow/score?player=%s&moves=%2d", player, moves);
         URL url = new URL(urlString);
         HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
-        httpCon.setRequestMethod("GET");
+        httpCon.setRequestMethod("PUT");
         return ResponseEntity.status(httpCon.getResponseCode()).body(httpCon.getResponseMessage());
     }
 
@@ -104,6 +106,35 @@ public class EngineRepository {
         return Msg.DATABASE.getCode();
     }
 
+    public ResponseEntity gameState(String gameId, int player) {
+        Engine engine = retreiveEngine(gameId);
+        board = engine.getCoordinatePlane();
+        String whoMadeLastMove = getPlayerUsername(engine, engine.getLastPlayer());
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectNode commonJsonData = mapper.createObjectNode().put("who_made_last_move",whoMadeLastMove)
+                .put("row",engine.getRow())
+                .put("column",engine.getColumn());
+
+        boolean emptySpace = checkBoardIsFull();
+        if (emptySpace == false) {
+            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(commonJsonData.put("code", Msg.DRAW.getCode()).toString());
+        }
+
+        String msgCode;
+
+        if (player == engine.getLastPlayer()) {
+            msgCode = commonJsonData.put("code", Msg.NOT_YOUR_TURN.getCode()).toString();
+        } else {
+            msgCode = commonJsonData.put("code", Msg.YOUR_TURN.getCode()).toString();
+        }
+
+        if (engine.getWinner() != 0) {
+            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(commonJsonData.put("code", Msg.GAME_FINISHED.getCode()).toString());
+        }
+
+        return ResponseEntity.ok(msgCode);
+    }
+
     public ResponseEntity move(String gameId, int player,int row, int col) {
         Engine engine = retreiveEngine(gameId);
         Update update = new Update();
@@ -114,44 +145,56 @@ public class EngineRepository {
         currentGameId = engine.getGameID();
 
         if (currentPlayer == engine.getLastPlayer()) {
-            System.out.print(Msg.UNTURN_MOVE.toJson().toString());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Msg.UNTURN_MOVE.toJson().toString());
+            System.out.print(Msg.UNTURN_MOVE.toJson(false).toString());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Msg.UNTURN_MOVE.toJson(false).toString());
         }
 
         if ( board[row][col] != 0 ) {
-            return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).body(Msg.EMPTY_SQUARE.toJson().toString());
+            return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).body(Msg.EMPTY_SQUARE.toJson(false).toString());
         }
 
         board[row][col] = player; //make the move
+        update.set("row", row);
+        update.set("column", col);
         update.set("coordinatePlane",board);
         update.set("lastPlayer",currentPlayer);
 
         if (winner(row,col)) {  // First, check for a winner.
-            ResponseEntity str;
-            if (currentPlayer == 1)
-                str = gameFinished(gameId, 1);
-            else
-                str = gameFinished(gameId, 2);
-            return str;
+            if (currentPlayer == 1) {
+                update.set("winner", 1);
+            } else {
+                update.set("winner", 2);
+            }
+            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.GAME_FINISHED.toJson(false).toString());
         }
 
-        boolean emptySpace = false;     // Check if the board is full.
-        for (int i = 0; i < 13; i++)
-            for (int j = 0; j < 13; j++)
-                if (board[i][j] == 0)
-                    emptySpace = true;
+        boolean emptySpace = checkBoardIsFull();
         if (emptySpace == false) {
-            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.DRAW.toJson());
+            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.DRAW.toJson(false).toString());
         }
 
         updateEngine(update);
-        String whoesTurnItIs;
-        if (currentPlayer == 1) {
-            whoesTurnItIs = engine.getFirstPlayerUsername();
+        String whoesTurnItIs = getPlayerUsername(engine, currentPlayer);
+        return ResponseEntity.ok((Msg.PLAYER_MOVED.toJson(false).put("who_made_last_move",whoesTurnItIs)).toString());
+    }
+
+    private String getPlayerUsername(Engine engine, int player) {
+        String playerUsername;
+        if (player == 1) {
+            playerUsername = engine.getFirstPlayerUsername();
         } else {
-            whoesTurnItIs = engine.getFirstPlayerUsername();
+            playerUsername = engine.getSecondPlayerUsername();
         }
-        return ResponseEntity.ok((Msg.PLAYER_MOVED.toJson().put("whoes_turn_it_is",whoesTurnItIs)).toString());
+        return playerUsername;
+    }
+
+    private boolean checkBoardIsFull() {
+        boolean emptySpace = false;     // Check if the board is full.
+        for (int i = 0; i < 18; i++)
+            for (int j = 0; j < 18; j++)
+                if (board[i][j] == 0)
+                    emptySpace = true;
+        return emptySpace;
     }
 
     private boolean winner(int row, int col) {
@@ -184,7 +227,7 @@ public class EngineRepository {
 
         r = row + dirX;  // Look at square in specified direction.
         c = col + dirY;
-        while ( r >= 0 && r < 13 && c >= 0 && c < 13 && board[r][c] == player ) {
+        while ( r >= 0 && r < 18 && c >= 0 && c < 18 && board[r][c] == player ) {
             // Square is on the board and contains one of the players's pieces.
             ct++;
             r += dirX;  // Go on to next square in this direction.
@@ -195,7 +238,7 @@ public class EngineRepository {
 
         r = row - dirX;  // Look in the opposite direction.
         c = col - dirY;
-        while ( r >= 0 && r < 13 && c >= 0 && c < 13 && board[r][c] == player ) {
+        while ( r >= 0 && r < 18 && c >= 0 && c < 18 && board[r][c] == player ) {
             // Square is on the board and contains one of the players's pieces.
             ct++;
             r -= dirX;   // Go on to next square in this direction.
@@ -207,8 +250,8 @@ public class EngineRepository {
 
     private int calculateTheMoves(int player) {
         int moves = 0;
-        for (int i = 0; i < 13; i++)
-            for (int j = 0; j < 13; j++)
+        for (int i = 0; i < 18; i++)
+            for (int j = 0; j < 18; j++)
                 if (board[i][j] == player)
                     moves++;
         return moves;

@@ -14,6 +14,10 @@ public class Engine {
     private String secondPlayerUsername;
 
     private int[][] coordinatePlane;
+    private int column;
+    private int row;
+
+    private int winner;
 
     private int lastPlayer;
 
@@ -21,6 +25,7 @@ public class Engine {
 
     public Engine(String firstPlayerUUID, String secondPlayerUUID) {
         this.lastPlayer = 2;
+        this.winner = 0;
         this.firstPlayerUsername = firstPlayerUUID;
         this.secondPlayerUsername = secondPlayerUUID;
         this.coordinatePlane = fillPlaneWithEmpty();
@@ -29,9 +34,9 @@ public class Engine {
     }
 
     private int[][] fillPlaneWithEmpty() {
-        int[][] value = new int[13][13];
-        for (int row = 0; row < 13; row++) {        // Fill the board with EMPTYs
-            for (int col = 0; col < 13; col++) {
+        int[][] value = new int[18][18];
+        for (int row = 0; row < 18; row++) {        // Fill the board with EMPTYs
+            for (int col = 0; col < 18; col++) {
                 value[row][col] = 0;
             }
         }
@@ -78,9 +83,32 @@ public class Engine {
         this.gameID = gameID;
     }
 
+    public int getColumn() {
+        return column;
+    }
+
+    public int getRow() {
+        return row;
+    }
+
+    public void setColumn(int column) {
+        this.column = column;
+    }
 
     public void setLastPlayer(int lastPlayer) {
         this.lastPlayer = lastPlayer;
+    }
+
+    public int getWinner() {
+        return winner;
+    }
+
+    public void setRow(int row) {
+        this.row = row;
+    }
+
+    public void setWinner(int winner) {
+        this.winner = winner;
     }
 
     @Override
