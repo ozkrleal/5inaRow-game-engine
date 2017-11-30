@@ -80,7 +80,7 @@ public class EngineRepository {
         Engine engine = new Engine(firstPlayer, secondPlayer);
         mongoTemplate.save(engine, "engine");
         System.out.print(engine);
-        String responseValue = new ObjectMapper().createObjectNode().put("game_iD",engine.getGameID()).toString();
+        String responseValue = new ObjectMapper().createObjectNode().put("game_id",engine.getGameId()).toString();
         return ResponseEntity.status(HttpStatus.CREATED).body(responseValue);
     }
 
@@ -106,12 +106,11 @@ public class EngineRepository {
         return Msg.DATABASE.getCode();
     }
 
-    public ResponseEntity gameState(String gameId, int player) {
+    public ResponseEntity gameState(String gameId, String player) {
         Engine engine = retreiveEngine(gameId);
         board = engine.getCoordinatePlane();
-        String whoMadeLastMove = getPlayerUsername(engine, engine.getLastPlayer());
         ObjectMapper mapper = new ObjectMapper();
-        ObjectNode commonJsonData = mapper.createObjectNode().put("who_made_last_move",whoMadeLastMove)
+        ObjectNode commonJsonData = mapper.createObjectNode().put("who_made_last_move",player)
                 .put("row",engine.getRow())
                 .put("column",engine.getColumn());
 
@@ -135,16 +134,26 @@ public class EngineRepository {
         return ResponseEntity.ok(msgCode);
     }
 
-    public ResponseEntity move(String gameId, int player,int row, int col) {
+    private int returnNumberOfPlayer(Engine engine, String player) {
+        int value = 0;
+        if (player == engine.getFirstPlayerUsername()) {
+            value = 1;
+        } else if (player == engine.getSecondPlayerUsername()) {
+            value = 2;
+        }
+        return value;
+    }
+
+    public ResponseEntity move(String gameId, String player,int row, int col) {
         Engine engine = retreiveEngine(gameId);
         Update update = new Update();
         //do it here
 
         board = engine.getCoordinatePlane();
-        currentPlayer = player;
-        currentGameId = engine.getGameID();
+        currentGameId = engine.getGameId();
+        currentPlayer = returnNumberOfPlayer(engine, player);
 
-        if (currentPlayer == engine.getLastPlayer()) {
+        if (player == engine.getLastPlayer()) {
             System.out.print(Msg.UNTURN_MOVE.toJson(false).toString());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Msg.UNTURN_MOVE.toJson(false).toString());
         }
@@ -153,11 +162,11 @@ public class EngineRepository {
             return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).body(Msg.EMPTY_SQUARE.toJson(false).toString());
         }
 
-        board[row][col] = player; //make the move
+        board[row][col] = currentPlayer; //make the move
         update.set("row", row);
         update.set("column", col);
         update.set("coordinatePlane",board);
-        update.set("lastPlayer",currentPlayer);
+        update.set("lastPlayer",player);
 
         if (winner(row,col)) {  // First, check for a winner.
             if (currentPlayer == 1) {
@@ -174,18 +183,7 @@ public class EngineRepository {
         }
 
         updateEngine(update);
-        String whoesTurnItIs = getPlayerUsername(engine, currentPlayer);
-        return ResponseEntity.ok((Msg.PLAYER_MOVED.toJson(false).put("who_made_last_move",whoesTurnItIs)).toString());
-    }
-
-    private String getPlayerUsername(Engine engine, int player) {
-        String playerUsername;
-        if (player == 1) {
-            playerUsername = engine.getFirstPlayerUsername();
-        } else {
-            playerUsername = engine.getSecondPlayerUsername();
-        }
-        return playerUsername;
+        return ResponseEntity.ok((Msg.PLAYER_MOVED.toJson(false).put("who_made_last_move",player)).toString());
     }
 
     private boolean checkBoardIsFull() {
@@ -258,16 +256,11 @@ public class EngineRepository {
     }
 
 
-    public ResponseEntity gameFinished(String gameId, int player) {
+    public ResponseEntity gameFinished(String gameId, String player) {
         Engine engine = retreiveEngine(gameId);
-        String username;
-        if (player == 1) {
-            username = engine.getFirstPlayerUsername();
-        } else {
-            username = engine.getSecondPlayerUsername();
-        }
+        int numberOfThePlayer = returnNumberOfPlayer(engine, player);
         try {
-            ResponseEntity response = calculateScore(username, calculateTheMoves(player));
+            ResponseEntity response = calculateScore(player, calculateTheMoves(numberOfThePlayer));
             removeTheGameDB(gameId);
             return response;
         } catch (IOException e) {

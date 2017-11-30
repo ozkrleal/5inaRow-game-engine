@@ -21,17 +21,17 @@ public class EngineController {
 
     @RequestMapping(value = "/processing", method = RequestMethod.PUT)
     public ResponseEntity move(@RequestBody Engine engine) {
-        return repository.move(engine.getGameID(), engine.getLastPlayer(), engine.getRow(), engine.getColumn());
+        return repository.move(engine.getGameId(), engine.getLastPlayer(), engine.getRow(), engine.getColumn());
     }
 
 
     @RequestMapping(value = "/quit", method = RequestMethod.DELETE)
-    public ResponseEntity gameFinished(@RequestParam("gameId") String gameId, @RequestParam(value = "player", defaultValue = "0") int player) {
+    public ResponseEntity gameFinished(@RequestParam("gameId") String gameId, @RequestParam(value = "player", defaultValue = " ") String player) {
         return repository.gameFinished(gameId, player);
     }
 
     @RequestMapping(value = "/gamesState", method = RequestMethod.GET)
-    public ResponseEntity gameState(@RequestParam("gameId") String gameId, @RequestParam("player") int player) {
+    public ResponseEntity gameState(@RequestParam("gameId") String gameId, @RequestParam("player") String player) {
         return repository.gameState(gameId, player);
     }
 

@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document(collection="engine")
 public class Engine {
 
-    @Id private String gameID;
+    @Id private String gameId;
 
     private String firstPlayerUsername;
 
@@ -19,17 +19,17 @@ public class Engine {
 
     private int winner;
 
-    private int lastPlayer;
+    private String lastPlayer;
 
     public Engine(){}
 
     public Engine(String firstPlayerUUID, String secondPlayerUUID) {
-        this.lastPlayer = 2;
+        this.lastPlayer = secondPlayerUUID;
         this.winner = 0;
         this.firstPlayerUsername = firstPlayerUUID;
         this.secondPlayerUsername = secondPlayerUUID;
         this.coordinatePlane = fillPlaneWithEmpty();
-//        this.gameID = gameID;
+//        this.gameId = gameId;
 
     }
 
@@ -55,12 +55,12 @@ public class Engine {
         return coordinatePlane;
     }
 
-    public int getLastPlayer() {
+    public String getLastPlayer() {
         return lastPlayer;
     }
 
-    public String getGameID() {
-        return gameID;
+    public String getGameId() {
+        return gameId;
     }
 
     public void setFirstPlayerUsername(String firstPlayerUsername) {
@@ -75,12 +75,8 @@ public class Engine {
         this.coordinatePlane = coordinatePlane;
     }
 
-    public void setLastPlaye(int lastPlayer) {
-        this.lastPlayer = lastPlayer;
-    }
-
-    public void setGameID(String gameID) {
-        this.gameID = gameID;
+    public void setGameId(String gameId) {
+        this.gameId = gameId;
     }
 
     public int getColumn() {
@@ -95,7 +91,7 @@ public class Engine {
         this.column = column;
     }
 
-    public void setLastPlayer(int lastPlayer) {
+    public void setLastPlayer(String lastPlayer) {
         this.lastPlayer = lastPlayer;
     }
 
@@ -114,8 +110,8 @@ public class Engine {
     @Override
     public String toString() {
         return String.format(
-                "Engine[gameID=%s, firstPlayerUsername='%s', secondPlayerUsername='%s']",
-                gameID, firstPlayerUsername, secondPlayerUsername);
+                "Engine[gameId=%s, firstPlayerUsername='%s', secondPlayerUsername='%s']",
+                gameId, firstPlayerUsername, secondPlayerUsername);
     }
 
 }
