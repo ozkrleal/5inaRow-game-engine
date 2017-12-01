@@ -26,8 +26,8 @@ public class EngineController {
 
 
     @RequestMapping(value = "/quit", method = RequestMethod.DELETE)
-    public ResponseEntity gameFinished(@RequestParam("gameId") String gameId, @RequestParam(value = "player", defaultValue = " ") String player) {
-        return repository.gameFinished(gameId, player);
+    public ResponseEntity gameFinished(@RequestParam("gameId") String gameId) {
+        return repository.gameFinished(gameId);
     }
 
     @RequestMapping(value = "/gamesState", method = RequestMethod.GET)

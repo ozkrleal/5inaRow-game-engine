@@ -39,8 +39,8 @@ public class EngineRepository {
         GAME_FINISHED(7, "The game is finished"),
         PLAYER_MOVED(8, "The player has moved"),
         NOT_YOUR_TURN(9, "It is not your turn"),
-        YOUR_TURN(10, "It is your turn");
-
+        YOUR_TURN(10, "It is your turn"),
+        GAME_DELETED(11, "The game is removed");
 
         private final int code;
         private final String description;
@@ -84,12 +84,16 @@ public class EngineRepository {
         return ResponseEntity.status(HttpStatus.CREATED).body(responseValue);
     }
 
-    private ResponseEntity calculateScore(String player, int moves) throws IOException {
-        String urlString = String.format("http://localhost:8080/5inarow/score?player=%s&moves=%2d", player, moves);
-        URL url = new URL(urlString);
+    private String calculateScore(String player, int moves) throws IOException {
+        //String urlString = String.format("http://localhost:8080/5inarow/score?player=%s&moves=%2d", player, moves);
+        URL url = new URL("http://localhost:8080/5inarow/score");
         HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
         httpCon.setRequestMethod("PUT");
-        return ResponseEntity.status(httpCon.getResponseCode()).body(httpCon.getResponseMessage());
+        httpCon.setRequestProperty( "player", player);
+        httpCon.setRequestProperty( "moves", String.valueOf(moves));
+        httpCon.setUseCaches( false );
+        //return ResponseEntity.status(httpCon.getResponseCode()).body(httpCon.getResponseMessage());
+        return httpCon.getResponseMessage();
     }
 
     private Engine retreiveEngine(String gameId) {
@@ -121,7 +125,7 @@ public class EngineRepository {
 
         String msgCode;
 
-        if (player == engine.getLastPlayer()) {
+        if (player.equals(engine.getLastPlayer())) {
             msgCode = commonJsonData.put("code", Msg.NOT_YOUR_TURN.getCode()).toString();
         } else {
             msgCode = commonJsonData.put("code", Msg.YOUR_TURN.getCode()).toString();
@@ -136,9 +140,9 @@ public class EngineRepository {
 
     private int returnNumberOfPlayer(Engine engine, String player) {
         int value = 0;
-        if (player == engine.getFirstPlayerUsername()) {
+        if (player.equals(engine.getFirstPlayerUsername())) {
             value = 1;
-        } else if (player == engine.getSecondPlayerUsername()) {
+        } else if (player.equals(engine.getSecondPlayerUsername())) {
             value = 2;
         }
         return value;
@@ -153,9 +157,9 @@ public class EngineRepository {
         currentGameId = engine.getGameId();
         currentPlayer = returnNumberOfPlayer(engine, player);
 
-        if (player == engine.getLastPlayer()) {
+        if (player.equals(engine.getLastPlayer())) {
             System.out.print(Msg.UNTURN_MOVE.toJson(false).toString());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Msg.UNTURN_MOVE.toJson(false).toString());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Msg.NOT_YOUR_TURN.toJson(false).put("who_made_last_move",player).toString());
         }
 
         if ( board[row][col] != 0 ) {
@@ -168,17 +172,22 @@ public class EngineRepository {
         update.set("coordinatePlane",board);
         update.set("lastPlayer",player);
 
+        System.out.print("started :" + currentPlayer);
+
         if (winner(row,col)) {  // First, check for a winner.
+            String res = saveHighScore(gameId, player);
             if (currentPlayer == 1) {
                 update.set("winner", 1);
             } else {
                 update.set("winner", 2);
             }
-            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.GAME_FINISHED.toJson(false).toString());
+            System.out.print("winner");
+            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.GAME_FINISHED.toJson(false).put("save_score_response", res).toString());
         }
 
         boolean emptySpace = checkBoardIsFull();
         if (emptySpace == false) {
+            System.out.print("full");
             return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.DRAW.toJson(false).toString());
         }
 
@@ -256,16 +265,23 @@ public class EngineRepository {
     }
 
 
-    public ResponseEntity gameFinished(String gameId, String player) {
+    public ResponseEntity gameFinished(String gameId) {
+        Engine engine = retreiveEngine(gameId);
+        ObjectNode playersJson = new ObjectMapper().createObjectNode()
+                .put("first_player", engine.getFirstPlayerUsername())
+                .put("second_player", engine.getSecondPlayerUsername());
+        removeTheGameDB(gameId);
+        return ResponseEntity.ok(playersJson.put("Message :", Msg.GAME_DELETED.getDescription()).toString());
+    }
+
+    private String saveHighScore(String gameId, String player) {
         Engine engine = retreiveEngine(gameId);
         int numberOfThePlayer = returnNumberOfPlayer(engine, player);
         try {
-            ResponseEntity response = calculateScore(player, calculateTheMoves(numberOfThePlayer));
-            removeTheGameDB(gameId);
-            return response;
+            return calculateScore(player, calculateTheMoves(numberOfThePlayer));
         } catch (IOException e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e);
+            return e.toString();
         }
     }
 
