@@ -4,6 +4,7 @@ package com.mdjd.engine.repository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mdjd.engine.entities.Engine;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -77,11 +78,29 @@ public class EngineRepository {
 
     public ResponseEntity create(String firstPlayer, String secondPlayer) {
 //        int gameId = getNewGameId();
-        Engine engine = new Engine(firstPlayer, secondPlayer);
-        mongoTemplate.save(engine, "engine");
-        System.out.print(engine);
-        String responseValue = new ObjectMapper().createObjectNode().put("game_id",engine.getGameId()).toString();
+        String responseValue;
+        String playerIsInGame = playerIsInGame(firstPlayer);
+        if (playerIsInGame.equals("")) {
+            Engine engine = new Engine(firstPlayer, secondPlayer);
+            mongoTemplate.save(engine, "engine");
+            System.out.print(engine);
+            responseValue = new ObjectMapper().createObjectNode().put("game_id", engine.getGameId()).toString();
+        } else {
+            responseValue = new ObjectMapper().createObjectNode().put("game_id", playerIsInGame).toString();
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(responseValue);
+    }
+
+    private String playerIsInGame(String player) {
+        List<ObjectId> allGameIds = findGameIds();
+        for(ObjectId tempId : allGameIds) {
+            String tempIdStr = tempId.toString();
+            Engine engine = retreiveEngine(tempIdStr);
+            if (engine.getSecondPlayerUsername().equals(player)) {
+                return engine.getGameId();
+            }
+        }
+        return "";
     }
 
     private String calculateScore(String player, int moves) throws IOException {
@@ -291,7 +310,7 @@ public class EngineRepository {
     }
 
     @SuppressWarnings("unchecked")
-    public List<Integer> findGameIds() {
+    public List<ObjectId> findGameIds() {
         return mongoTemplate.getCollection("engine").distinct("_id");
     }
 
