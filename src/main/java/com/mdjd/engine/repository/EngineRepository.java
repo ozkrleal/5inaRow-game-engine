@@ -36,9 +36,9 @@ public class EngineRepository {
         START_NEW_GAME(3, "Finish the current game first"),
         NO_GAME_FOUND(4, "This Game Id is invalid"),
         PLAYER_RESIGNS(5, "Player resigns, you have won"),
-        DRAW(6, "The game ends in a draw"),
-        GAME_FINISHED(7, "The game is finished"),
-        PLAYER_MOVED(8, "The player has moved"),
+        PLAYER_MOVED(6, "The player has moved"),
+        DRAW(7, "The game ends in a draw"),
+        GAME_FINISHED(8, "The game is finished"),
         NOT_YOUR_TURN(9, "It is not your turn"),
         YOUR_TURN(10, "It is your turn"),
         GAME_DELETED(11, "The game is removed");
