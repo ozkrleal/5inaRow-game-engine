@@ -105,7 +105,7 @@ public class EngineRepository {
 
     private String calculateScore(String player, int moves) throws IOException {
         //String urlString = String.format("http://localhost:8080/5inarow/score?player=%s&moves=%2d", player, moves);
-        URL url = new URL("http://localhost:8080/5inarow/score");
+        URL url = new URL("http://localhost:3001/5inarow/score");
         HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
         httpCon.setRequestMethod("PUT");
         httpCon.setRequestProperty( "player", player);
@@ -177,12 +177,12 @@ public class EngineRepository {
         currentPlayer = returnNumberOfPlayer(engine, player);
 
         if (player.equals(engine.getLastPlayer())) {
-            System.out.print(Msg.UNTURN_MOVE.toJson(false).toString());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Msg.NOT_YOUR_TURN.toJson(false).put("who_made_last_move",player).toString());
+//            System.out.print(Msg.UNTURN_MOVE.toJson(false).toString());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Msg.NOT_YOUR_TURN.toJson(true).put("who_made_last_move",player).toString());
         }
 
         if ( board[row][col] != 0 ) {
-            return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).body(Msg.EMPTY_SQUARE.toJson(false).toString());
+            return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).body(Msg.EMPTY_SQUARE.toJson(true).toString());
         }
 
         board[row][col] = currentPlayer; //make the move
@@ -201,17 +201,17 @@ public class EngineRepository {
                 update.set("winner", 2);
             }
             System.out.print("winner");
-            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.GAME_FINISHED.toJson(false).put("save_score_response", res).toString());
+            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.GAME_FINISHED.toJson(true).put("save_score_response", res).toString());
         }
 
         boolean emptySpace = checkBoardIsFull();
         if (emptySpace == false) {
             System.out.print("full");
-            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.DRAW.toJson(false).toString());
+            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.DRAW.toJson(true).toString());
         }
 
         updateEngine(update);
-        return ResponseEntity.ok((Msg.PLAYER_MOVED.toJson(false).put("who_made_last_move",player)).toString());
+        return ResponseEntity.ok((Msg.PLAYER_MOVED.toJson(true).put("who_made_last_move",player)).toString());
     }
 
     private boolean checkBoardIsFull() {
