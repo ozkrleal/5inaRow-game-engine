@@ -70,7 +70,7 @@ public class EngineRepository {
             if (showCode == true) {
                 value = mapper.createObjectNode().put("code", code);
             } else {
-                value = mapper.createObjectNode().put("Message", description);
+                value = mapper.createObjectNode().put("message", description);
             }
             return value;
         }
@@ -84,9 +84,13 @@ public class EngineRepository {
             Engine engine = new Engine(firstPlayer, secondPlayer);
             mongoTemplate.save(engine, "engine");
             System.out.print(engine);
-            responseValue = new ObjectMapper().createObjectNode().put("game_id", engine.getGameId()).toString();
+            responseValue = new ObjectMapper().createObjectNode().put("game_id", engine.getGameId())
+                    .put("firstPlayer",firstPlayer)
+                    .put("secondPlayer",secondPlayer).toString();
         } else {
-            responseValue = new ObjectMapper().createObjectNode().put("game_id", playerIsInGame).toString();
+            responseValue = new ObjectMapper().createObjectNode().put("game_id", playerIsInGame)
+                    .put("firstPlayer",secondPlayer)
+                    .put("secondPlayer",firstPlayer).toString();
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(responseValue);
     }
@@ -105,11 +109,11 @@ public class EngineRepository {
 
     private String calculateScore(String player, int moves) throws IOException {
         //String urlString = String.format("http://localhost:8080/5inarow/score?player=%s&moves=%2d", player, moves);
-        URL url = new URL("http://localhost:3001/5inarow/score");
+        URL url = new URL("http://localhost:3002/5inarow/score");
         HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
         httpCon.setRequestMethod("PUT");
-        httpCon.setRequestProperty( "player", player);
-        httpCon.setRequestProperty( "moves", String.valueOf(moves));
+        httpCon.setRequestProperty( "userName", player);
+        httpCon.setRequestProperty( "numberOfMoves", String.valueOf(moves));
         httpCon.setUseCaches( false );
         //return ResponseEntity.status(httpCon.getResponseCode()).body(httpCon.getResponseMessage());
         return httpCon.getResponseMessage();
