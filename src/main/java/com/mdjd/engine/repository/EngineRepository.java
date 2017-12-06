@@ -28,6 +28,7 @@ public class EngineRepository {
     private int currentPlayer;
     private int[][] board;
     private String currentGameId;
+    private Object lock = new Object();
 
     private enum Msg {
         DATABASE(0, "A database error has occured"),
@@ -77,34 +78,35 @@ public class EngineRepository {
     }
 
     public ResponseEntity create(String firstPlayer, String secondPlayer) {
-//        int gameId = getNewGameId();
         String responseValue;
-        String playerIsInGame = playerIsInGame(firstPlayer);
-        if (playerIsInGame.equals("")) {
-            Engine engine = new Engine(firstPlayer, secondPlayer);
-            mongoTemplate.save(engine, "engine");
-            System.out.print(engine);
-            responseValue = new ObjectMapper().createObjectNode().put("game_id", engine.getGameId())
-                    .put("firstPlayer",firstPlayer)
-                    .put("secondPlayer",secondPlayer).toString();
-        } else {
-            responseValue = new ObjectMapper().createObjectNode().put("game_id", playerIsInGame)
-                    .put("firstPlayer",secondPlayer)
-                    .put("secondPlayer",firstPlayer).toString();
+        synchronized (lock) {
+            String playerIsInGame = playerIsInGame(firstPlayer);
+            if (playerIsInGame.equals("")) {
+                Engine engine = new Engine(firstPlayer, secondPlayer);
+                mongoTemplate.save(engine, "engine");
+                System.out.print(engine);
+                responseValue = new ObjectMapper().createObjectNode().put("game_id", engine.getGameId())
+                        .put("firstPlayer", firstPlayer)
+                        .put("secondPlayer", secondPlayer).toString();
+            } else {
+                responseValue = new ObjectMapper().createObjectNode().put("game_id", playerIsInGame)
+                        .put("firstPlayer", secondPlayer)
+                        .put("secondPlayer", firstPlayer).toString();
+            }
+            return ResponseEntity.status(HttpStatus.CREATED).body(responseValue);
         }
-        return ResponseEntity.status(HttpStatus.CREATED).body(responseValue);
     }
 
     private String playerIsInGame(String player) {
-        List<ObjectId> allGameIds = findGameIds();
-        for(ObjectId tempId : allGameIds) {
-            String tempIdStr = tempId.toString();
-            Engine engine = retreiveEngine(tempIdStr);
-            if (engine.getSecondPlayerUsername().equals(player)) {
-                return engine.getGameId();
+            List<ObjectId> allGameIds = findGameIds();
+            for (ObjectId tempId : allGameIds) {
+                String tempIdStr = tempId.toString();
+                Engine engine = retreiveEngine(tempIdStr);
+                if (engine.getSecondPlayerUsername().equals(player)) {
+                    return engine.getGameId();
+                }
             }
-        }
-        return "";
+            return "";
     }
 
     private String calculateScore(String player, int moves) throws IOException {
@@ -150,8 +152,10 @@ public class EngineRepository {
 
         if (player.equals(engine.getLastPlayer())) {
             msgCode = commonJsonData.put("code", Msg.NOT_YOUR_TURN.getCode()).toString();
-        } else {
+        } else if (player.equals(engine.getFirstPlayerUsername()) || player.equals(engine.getSecondPlayerUsername())) {
             msgCode = commonJsonData.put("code", Msg.YOUR_TURN.getCode()).toString();
+        } else {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Msg.NO_GAME_FOUND.toJson(true).toString());
         }
 
         if (engine.getWinner() != 0) {
@@ -181,41 +185,45 @@ public class EngineRepository {
         currentPlayer = returnNumberOfPlayer(engine, player);
 
         if (player.equals(engine.getLastPlayer())) {
-//            System.out.print(Msg.UNTURN_MOVE.toJson(false).toString());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Msg.NOT_YOUR_TURN.toJson(true).put("who_made_last_move",player).toString());
         }
-
-        if ( board[row][col] != 0 ) {
-            return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).body(Msg.EMPTY_SQUARE.toJson(true).toString());
-        }
-
-        board[row][col] = currentPlayer; //make the move
-        update.set("row", row);
-        update.set("column", col);
-        update.set("coordinatePlane",board);
-        update.set("lastPlayer",player);
-
-        System.out.print("started :" + currentPlayer);
-
-        if (winner(row,col)) {  // First, check for a winner.
-            String res = saveHighScore(gameId, player);
-            if (currentPlayer == 1) {
-                update.set("winner", 1);
-            } else {
-                update.set("winner", 2);
+        else if (player.equals(engine.getFirstPlayerUsername())) {
+            if (board[row][col] != 0) {
+                return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).body(Msg.EMPTY_SQUARE.toJson(true).toString());
             }
-            System.out.print("winner");
-            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.GAME_FINISHED.toJson(true).put("save_score_response", res).toString());
-        }
 
-        boolean emptySpace = checkBoardIsFull();
-        if (emptySpace == false) {
-            System.out.print("full");
-            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.DRAW.toJson(true).toString());
-        }
+            board[row][col] = currentPlayer; //make the move
+            update.set("row", row);
+            update.set("column", col);
+            update.set("coordinatePlane", board);
+            update.set("lastPlayer", player);
 
-        updateEngine(update);
-        return ResponseEntity.ok((Msg.PLAYER_MOVED.toJson(true).put("who_made_last_move",player)).toString());
+            System.out.print("started :" + currentPlayer);
+
+            if (winner(row, col)) {  // First, check for a winner.
+                String res = saveHighScore(gameId, player);
+                if (currentPlayer == 1) {
+                    update.set("winner", 1);
+                } else {
+                    update.set("winner", 2);
+                }
+                System.out.print("winner");
+                return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.GAME_FINISHED.toJson(true).put("save_score_response", res).toString());
+            }
+
+            boolean emptySpace = checkBoardIsFull();
+            if (emptySpace == false) {
+                System.out.print("full");
+                return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.DRAW.toJson(true).toString());
+            }
+
+            updateEngine(update);
+            return ResponseEntity.ok((Msg.PLAYER_MOVED.toJson(true)
+                    .put("who_made_last_move", player)
+                    .put("column", col).put("row", row)).toString());
+        } else {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Msg.NO_GAME_FOUND.toJson(true).toString());
+        }
     }
 
     private boolean checkBoardIsFull() {

@@ -26,6 +26,8 @@ public class Engine {
     public Engine(String firstPlayerUUID, String secondPlayerUUID) {
         this.lastPlayer = secondPlayerUUID;
         this.winner = 0;
+        this.column = -1;
+        this.row = -1;
         this.firstPlayerUsername = firstPlayerUUID;
         this.secondPlayerUsername = secondPlayerUUID;
         this.coordinatePlane = fillPlaneWithEmpty();
