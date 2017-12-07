@@ -4,6 +4,12 @@ package com.mdjd.engine.repository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mdjd.engine.entities.Engine;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -17,6 +23,7 @@ import org.springframework.stereotype.Repository;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 
 @Repository
@@ -26,7 +33,6 @@ public class EngineRepository {
     private MongoTemplate mongoTemplate;
 
     private int currentPlayer;
-    private int[][] board;
     private String currentGameId;
     private Object lock = new Object();
 
@@ -111,14 +117,26 @@ public class EngineRepository {
 
     private String calculateScore(String player, int moves) throws IOException {
         //String urlString = String.format("http://localhost:8080/5inarow/score?player=%s&moves=%2d", player, moves);
-        URL url = new URL("http://localhost:3002/5inarow/score");
-        HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
-        httpCon.setRequestMethod("PUT");
-        httpCon.setRequestProperty( "userName", player);
-        httpCon.setRequestProperty( "numberOfMoves", String.valueOf(moves));
-        httpCon.setUseCaches( false );
-        //return ResponseEntity.status(httpCon.getResponseCode()).body(httpCon.getResponseMessage());
-        return httpCon.getResponseMessage();
+        CloseableHttpClient client = HttpClients.createDefault();
+        HttpPost httpPost = new HttpPost("http://localhost:3001/5inarow/score");
+
+        List<BasicNameValuePair> params = new ArrayList<>();
+        params.add(new BasicNameValuePair("userName", player));
+        params.add(new BasicNameValuePair("numberOfMoves", String.valueOf(moves)));
+        httpPost.setEntity(new UrlEncodedFormEntity(params));
+
+        CloseableHttpResponse response = client.execute(httpPost);
+        String str = response.getStatusLine().getReasonPhrase();
+        client.close();
+        return str;
+//        URL url = new URL("http://localhost:3001/5inarow/score");
+//        HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
+//        httpCon.setRequestMethod("PUT");
+//        httpCon.setRequestProperty( "userName", player);
+//        httpCon.setRequestProperty( "numberOfMoves", String.valueOf(moves));
+//        httpCon.setUseCaches( false );
+//        //return ResponseEntity.status(httpCon.getResponseCode()).body(httpCon.getResponseMessage());
+//        return httpCon.getResponseMessage();
     }
 
     private Engine retreiveEngine(String gameId) {
@@ -137,13 +155,13 @@ public class EngineRepository {
 
     public ResponseEntity gameState(String gameId, String player) {
         Engine engine = retreiveEngine(gameId);
-        board = engine.getCoordinatePlane();
+        int[][] board = engine.getCoordinatePlane();
         ObjectMapper mapper = new ObjectMapper();
         ObjectNode commonJsonData = mapper.createObjectNode().put("who_made_last_move",player)
                 .put("row",engine.getRow())
                 .put("column",engine.getColumn());
 
-        boolean emptySpace = checkBoardIsFull();
+        boolean emptySpace = checkBoardIsFull(board);
         if (emptySpace == false) {
             return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(commonJsonData.put("code", Msg.DRAW.getCode()).toString());
         }
@@ -179,7 +197,7 @@ public class EngineRepository {
         Engine engine = retreiveEngine(gameId);
         Update update = new Update();
         //do it here
-
+        int[][] board;
         board = engine.getCoordinatePlane();
         currentGameId = engine.getGameId();
         currentPlayer = returnNumberOfPlayer(engine, player);
@@ -187,7 +205,7 @@ public class EngineRepository {
         if (player.equals(engine.getLastPlayer())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Msg.NOT_YOUR_TURN.toJson(true).put("who_made_last_move",player).toString());
         }
-        else if (player.equals(engine.getFirstPlayerUsername())) {
+        else if (player.equals(engine.getFirstPlayerUsername()) || player.equals(engine.getSecondPlayerUsername())) {
             if (board[row][col] != 0) {
                 return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).body(Msg.EMPTY_SQUARE.toJson(true).toString());
             }
@@ -200,7 +218,7 @@ public class EngineRepository {
 
             System.out.print("started :" + currentPlayer);
 
-            if (winner(row, col)) {  // First, check for a winner.
+            if (winner(row, col, board)) {  // First, check for a winner.
                 String res = saveHighScore(gameId, player);
                 if (currentPlayer == 1) {
                     update.set("winner", 1);
@@ -211,7 +229,7 @@ public class EngineRepository {
                 return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.GAME_FINISHED.toJson(true).put("save_score_response", res).toString());
             }
 
-            boolean emptySpace = checkBoardIsFull();
+            boolean emptySpace = checkBoardIsFull(board);
             if (emptySpace == false) {
                 System.out.print("full");
                 return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.DRAW.toJson(true).toString());
@@ -226,7 +244,7 @@ public class EngineRepository {
         }
     }
 
-    private boolean checkBoardIsFull() {
+    private boolean checkBoardIsFull(int[][] board) {
         boolean emptySpace = false;     // Check if the board is full.
         for (int i = 0; i < 18; i++)
             for (int j = 0; j < 18; j++)
@@ -235,20 +253,20 @@ public class EngineRepository {
         return emptySpace;
     }
 
-    private boolean winner(int row, int col) {
+    private boolean winner(int row, int col, int[][] board) {
         //horizontal direction: 1 0
         //vertical direction: 0 1
         //first diagonal: 1 1
         //second diagonal: 1 -1
         //should check for >= 5 because it is possible that player place a piece in an empty square that joins to other short rows of pieces
 
-        if (count(currentPlayer, row, col, 1, 0 ) >= 5)
+        if (count(currentPlayer, row, col, 1, 0 , board) >= 5)
             return true;
-        if (count(currentPlayer, row, col, 0, 1 ) >= 5)
+        if (count(currentPlayer, row, col, 0, 1 , board) >= 5)
             return true;
-        if (count(currentPlayer, row, col, 1, -1 ) >= 5)
+        if (count(currentPlayer, row, col, 1, -1 , board) >= 5)
             return true;
-        if (count(currentPlayer, row, col, 1, 1 ) >= 5)
+        if (count(currentPlayer, row, col, 1, 1 , board) >= 5)
             return true;
 
           /* When we get to this point, we know that the game is not won. */
@@ -257,7 +275,7 @@ public class EngineRepository {
 
     }
 
-    private int count(int player, int row, int col, int dirX, int dirY) {
+    private int count(int player, int row, int col, int dirX, int dirY, int[][] board) {
 
         int ct = 1;  // Number of pieces in a row belonging to the player.
 
@@ -286,7 +304,7 @@ public class EngineRepository {
         return ct;
     }
 
-    private int calculateTheMoves(int player) {
+    private int calculateTheMoves(int player, int[][] board) {
         int moves = 0;
         for (int i = 0; i < 18; i++)
             for (int j = 0; j < 18; j++)
@@ -307,9 +325,11 @@ public class EngineRepository {
 
     private String saveHighScore(String gameId, String player) {
         Engine engine = retreiveEngine(gameId);
+        int[][] board;
+        board = engine.getCoordinatePlane();
         int numberOfThePlayer = returnNumberOfPlayer(engine, player);
         try {
-            return calculateScore(player, calculateTheMoves(numberOfThePlayer));
+            return calculateScore(player, calculateTheMoves(numberOfThePlayer, board));
         } catch (IOException e) {
             e.printStackTrace();
             return e.toString();
