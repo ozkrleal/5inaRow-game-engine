@@ -166,21 +166,20 @@ public class EngineRepository {
             return ResponseEntity.status(HttpStatus.OK).body(commonJsonData.put("code", Msg.DRAW.getCode()).toString());
         }
 
-        String msgCode;
-
-        if (player.equals(engine.getLastPlayer())) {
-            msgCode = commonJsonData.put("code", Msg.NOT_YOUR_TURN.getCode()).toString();
-        } else if (player.equals(engine.getFirstPlayerUsername()) || player.equals(engine.getSecondPlayerUsername())) {
-            msgCode = commonJsonData.put("code", Msg.YOUR_TURN.getCode()).toString();
-        } else {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Msg.NO_GAME_FOUND.toJson(true).toString());
-        }
-
         if (engine.getWinner() != 0) {
             return ResponseEntity.status(HttpStatus.OK).body(commonJsonData.put("code", Msg.GAME_FINISHED.getCode()).toString());
-        }
+        } else {
+            String msgCode;
+            if (player.equals(engine.getLastPlayer())) {
+                msgCode = commonJsonData.put("code", Msg.NOT_YOUR_TURN.getCode()).toString();
+            } else if (player.equals(engine.getFirstPlayerUsername()) || player.equals(engine.getSecondPlayerUsername())) {
+                msgCode = commonJsonData.put("code", Msg.YOUR_TURN.getCode()).toString();
+            } else {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Msg.NO_GAME_FOUND.toJson(true).toString());
+            }
 
-        return ResponseEntity.ok(msgCode);
+            return ResponseEntity.ok(msgCode);
+        }
     }
 
     private int returnNumberOfPlayer(Engine engine, String player) {
@@ -226,19 +225,21 @@ public class EngineRepository {
                     update.set("winner", 2);
                 }
                 System.out.print("winner");
+                updateEngine(update);
                 return ResponseEntity.status(HttpStatus.OK).body(Msg.GAME_FINISHED.toJson(true).put("save_score_response", res).toString());
-            }
+            } else {
+                updateEngine(update);
 
-            boolean emptySpace = checkBoardIsFull(board);
-            if (emptySpace == false) {
-                System.out.print("full");
-                return ResponseEntity.status(HttpStatus.OK).body(Msg.DRAW.toJson(true).toString());
-            }
+                boolean emptySpace = checkBoardIsFull(board);
+                if (emptySpace == false) {
+                    System.out.print("full");
+                    return ResponseEntity.status(HttpStatus.OK).body(Msg.DRAW.toJson(true).toString());
+                }
 
-            updateEngine(update);
-            return ResponseEntity.ok((Msg.PLAYER_MOVED.toJson(true)
-                    .put("who_made_last_move", player)
-                    .put("column", col).put("row", row)).toString());
+                return ResponseEntity.ok((Msg.PLAYER_MOVED.toJson(true)
+                        .put("who_made_last_move", player)
+                        .put("column", col).put("row", row)).toString());
+            }
         } else {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Msg.NO_GAME_FOUND.toJson(true).toString());
         }
