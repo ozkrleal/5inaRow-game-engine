@@ -163,7 +163,7 @@ public class EngineRepository {
 
         boolean emptySpace = checkBoardIsFull(board);
         if (emptySpace == false) {
-            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(commonJsonData.put("code", Msg.DRAW.getCode()).toString());
+            return ResponseEntity.status(HttpStatus.OK).body(commonJsonData.put("code", Msg.DRAW.getCode()).toString());
         }
 
         String msgCode;
@@ -177,7 +177,7 @@ public class EngineRepository {
         }
 
         if (engine.getWinner() != 0) {
-            return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(commonJsonData.put("code", Msg.GAME_FINISHED.getCode()).toString());
+            return ResponseEntity.status(HttpStatus.OK).body(commonJsonData.put("code", Msg.GAME_FINISHED.getCode()).toString());
         }
 
         return ResponseEntity.ok(msgCode);
@@ -226,13 +226,13 @@ public class EngineRepository {
                     update.set("winner", 2);
                 }
                 System.out.print("winner");
-                return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.GAME_FINISHED.toJson(true).put("save_score_response", res).toString());
+                return ResponseEntity.status(HttpStatus.OK).body(Msg.GAME_FINISHED.toJson(true).put("save_score_response", res).toString());
             }
 
             boolean emptySpace = checkBoardIsFull(board);
             if (emptySpace == false) {
                 System.out.print("full");
-                return ResponseEntity.status(HttpStatus.RESET_CONTENT).body(Msg.DRAW.toJson(true).toString());
+                return ResponseEntity.status(HttpStatus.OK).body(Msg.DRAW.toJson(true).toString());
             }
 
             updateEngine(update);
