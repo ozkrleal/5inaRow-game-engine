@@ -36,9 +36,9 @@ public class Engine {
     }
 
     private int[][] fillPlaneWithEmpty() {
-        int[][] value = new int[18][18];
-        for (int row = 0; row < 18; row++) {        // Fill the board with EMPTYs
-            for (int col = 0; col < 18; col++) {
+        int[][] value = new int[19][19];
+        for (int row = 0; row < 19; row++) {        // Fill the board with EMPTYs
+            for (int col = 0; col < 19; col++) {
                 value[row][col] = 0;
             }
         }

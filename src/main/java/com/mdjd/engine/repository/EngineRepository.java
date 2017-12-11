@@ -247,8 +247,8 @@ public class EngineRepository {
 
     private boolean checkBoardIsFull(int[][] board) {
         boolean emptySpace = false;     // Check if the board is full.
-        for (int i = 0; i < 18; i++)
-            for (int j = 0; j < 18; j++)
+        for (int i = 0; i < 19; i++)
+            for (int j = 0; j < 19; j++)
                 if (board[i][j] == 0)
                     emptySpace = true;
         return emptySpace;
@@ -284,7 +284,7 @@ public class EngineRepository {
 
         r = row + dirX;  // Look at square in specified direction.
         c = col + dirY;
-        while ( r >= 0 && r < 18 && c >= 0 && c < 18 && board[r][c] == player ) {
+        while ( r >= 0 && r < 19 && c >= 0 && c < 19 && board[r][c] == player ) {
             // Square is on the board and contains one of the players's pieces.
             ct++;
             r += dirX;  // Go on to next square in this direction.
@@ -295,7 +295,7 @@ public class EngineRepository {
 
         r = row - dirX;  // Look in the opposite direction.
         c = col - dirY;
-        while ( r >= 0 && r < 18 && c >= 0 && c < 18 && board[r][c] == player ) {
+        while ( r >= 0 && r < 19 && c >= 0 && c < 19 && board[r][c] == player ) {
             // Square is on the board and contains one of the players's pieces.
             ct++;
             r -= dirX;   // Go on to next square in this direction.
@@ -307,8 +307,8 @@ public class EngineRepository {
 
     private int calculateTheMoves(int player, int[][] board) {
         int moves = 0;
-        for (int i = 0; i < 18; i++)
-            for (int j = 0; j < 18; j++)
+        for (int i = 0; i < 19; i++)
+            for (int j = 0; j < 19; j++)
                 if (board[i][j] == player)
                     moves++;
         return moves;
